@@ -27,4 +27,4 @@ sudo pacman -Syu --noconfirm
 sudo pacman -Scc --noconfirm
 echo "sudo pacman -S zerotier-one httpie iwd wpa_supplicant xdg-utils github-cli croc libqalculate superfile zellij xh"
 cd ..
-rm -rf jq
+rm -rf jq 
