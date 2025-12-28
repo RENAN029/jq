@@ -25,6 +25,6 @@ echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" | sudo tee
 
 sudo pacman -Syu --noconfirm 
 sudo pacman -Scc --noconfirm
-echo "sudo pacman -S zerotier-one tailscale xh wpa_supplicant xdg-utils github-cli ly libqalculate superfile zellij"
+echo "sudo pacman -S zerotier-one tailscale iwd wpa_supplicant xdg-utils github-cli yay libqalculate superfile zellij"
 cd ..
 rm -rf jq
