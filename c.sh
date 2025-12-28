@@ -4,7 +4,7 @@ sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-n
 sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
 sudo pacman -S --noconfirm gdu nvidia-open intel-ucode git neovim fastfetch btop ufw fwupd flatpak yt-dlp aria2 earlyoom
 sudo pacman -S --noconfirm cosmic-session cosmic-terminal cosmic-files cosmic-store xdg-user-dirs smartmontools openssh
-
+echo "sudo pacman -S nix yay ananicy-cpp clamav irqbalance cups pnpm mise mangohud distrobox docker gamescope croc xh"    
 sudo pacman -S --noconfirm gamemode fuse dnsmasq apparmor 
 git clone https://github.com/maximilionus/lucidglyph.git
 systemctl enable cosmic-greeter earlyoom dnsmasq apparmor 
