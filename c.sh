@@ -7,7 +7,7 @@ sudo pacman -S --noconfirm gdu
 
 nvidia-open intel-ucode neovim fastfetch btop ufw fwupd flatpak yt-dlp aria2 
  
-echo "sudo pacman -S fzf starship fish fisher tealdeer ripgrep zoxide eza bat fd lazygit lazydocker" 
+echo "sudo pacman -S fzf fish tealdeer ripgrep zoxide eza bat fd lazygit lazydocker" 
 sudo pacman -S --noconfirm gamemode fuse dnsmasq apparmor 
 git clone https://github.com/maximilionus/lucidglyph.git
 systemctl enable cosmic-greeter earlyoom dnsmasq apparmor 
