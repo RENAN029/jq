@@ -20,111 +20,121 @@ cleanup_files() {
     done
 }
 
-de() {
-    local state_file="$STATE_DIR/de"
+de_cosmic() {
+    local state_file="$STATE_DIR/de_cosmic"
     
-    if [ -f "$state_file" ]; then
-        local current_de=$(cat "$state_file" 2>/dev/null || echo "")
-        
-        if [ -n "$current_de" ]; then
-            case $current_de in
-                cosmic)
-                    if confirm "Cosmic detectado. Desinstalar?"; then
-                        echo "Desinstalando Cosmic..."
-                        
-                        sudo systemctl disable cosmic-greeter 2>/dev/null || true
-                        sudo pacman -Rsnu --noconfirm cosmic-session cosmic-terminal cosmic-files cosmic-store cosmic-wallpapers || true
-                        sudo pacman -Rsnu --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono || true
-                        sudo pacman -Rsnu --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer || true
-                        sudo pacman -Rsnu --noconfirm xdg-user-dirs croc gdu || true
-                        
-                        cleanup_files "$state_file"
-                        echo "Cosmic desinstalado."
-                    fi
-                    ;;
-                gnome)
-                    if confirm "Gnome detectado. Desinstalar?"; then
-                        echo "Desinstalando Gnome..."
-                        
-                        sudo systemctl disable gdm 2>/dev/null || true
-                        sudo pacman -Rsnu --noconfirm gnome-shell gnome-console gnome-software gnome-tweaks gnome-control-center gnome-disk-utility gdm || true
-                        sudo pacman -Rsnu --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono || true
-                        sudo pacman -Rsnu --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer || true
-                        
-                        cleanup_files "$state_file"
-                        echo "Gnome desinstalado."
-                    fi
-                    ;;
-                plasma)
-                    if confirm "Plasma detectado. Desinstalar?"; then
-                        echo "Desinstalando Plasma..."
-                        
-                        sudo systemctl disable sddm 2>/dev/null || true
-                        sudo pacman -Rsnu --noconfirm plasma-meta konsole dolphin discover kdeconnect partitionmanager ffmpegthumbs dolphin-plugins ark || true
-                        sudo pacman -Rsnu --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono || true
-                        sudo pacman -Rsnu --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer || true
-                        
-                        cleanup_files "$state_file"
-                        echo "Plasma desinstalado."
-                    fi
-                    ;;
-            esac
+    if [ -f "$state_file" ] || (pacman -Q cosmic-session &>/dev/null 2>&1); then
+        if confirm "Cosmic detectado. Desinstalar?"; then
+            echo "Desinstalando Cosmic..."
+            
+            sudo systemctl disable cosmic-greeter 2>/dev/null || true
+            sudo pacman -Rsnu --noconfirm cosmic-session cosmic-terminal cosmic-files cosmic-store cosmic-wallpapers || true
+            sudo pacman -Rsnu --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono || true
+            sudo pacman -Rsnu --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer || true
+            sudo pacman -Rsnu --noconfirm xdg-user-dirs croc gdu || true
+            
+            cleanup_files "$state_file"
+            echo "Cosmic desinstalado."
         fi
     else
-        echo "Selecione o Ambiente Desktop:"
+        if confirm "Instalar Cosmic?"; then
+            echo "Instalando Cosmic..."
+            
+            sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono
+            sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
+            sudo pacman -S --noconfirm cosmic-session cosmic-terminal cosmic-files cosmic-store cosmic-wallpapers xdg-user-dirs croc
+            sudo pacman -S --noconfirm gdu
+            sudo systemctl enable cosmic-greeter
+            
+            touch "$state_file"
+            echo "Cosmic instalado. Reinicie para aplicar."
+        fi
+    fi
+}
+
+de_gnome() {
+    local state_file="$STATE_DIR/de_gnome"
+    
+    if [ -f "$state_file" ] || (pacman -Q gnome-shell &>/dev/null 2>&1); then
+        if confirm "Gnome detectado. Desinstalar?"; then
+            echo "Desinstalando Gnome..."
+            
+            sudo systemctl disable gdm 2>/dev/null || true
+            sudo pacman -Rsnu --noconfirm gnome-shell gnome-console gnome-software gnome-tweaks gnome-control-center gnome-disk-utility gdm || true
+            sudo pacman -Rsnu --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono || true
+            sudo pacman -Rsnu --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer || true
+            
+            cleanup_files "$state_file"
+            echo "Gnome desinstalado."
+        fi
+    else
+        if confirm "Instalar Gnome?"; then
+            echo "Instalando Gnome..."
+            
+            sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono
+            sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
+            sudo pacman -S --noconfirm gnome-shell gnome-console gnome-software gnome-tweaks gnome-control-center gnome-disk-utility
+            sudo pacman -S --noconfirm gdm
+            sudo systemctl enable gdm
+            
+            touch "$state_file"
+            echo "Gnome instalado. Reinicie para aplicar."
+        fi
+    fi
+}
+
+de_plasma() {
+    local state_file="$STATE_DIR/de_plasma"
+    
+    if [ -f "$state_file" ] || (pacman -Q plasma-meta &>/dev/null 2>&1); then
+        if confirm "Plasma detectado. Desinstalar?"; then
+            echo "Desinstalando Plasma..."
+            
+            sudo systemctl disable sddm 2>/dev/null || true
+            sudo pacman -Rsnu --noconfirm plasma-meta konsole dolphin discover kdeconnect partitionmanager ffmpegthumbs dolphin-plugins ark || true
+            sudo pacman -Rsnu --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono || true
+            sudo pacman -Rsnu --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer || true
+            
+            cleanup_files "$state_file"
+            echo "Plasma desinstalado."
+        fi
+    else
+        if confirm "Instalar Plasma?"; then
+            echo "Instalando Plasma..."
+            
+            sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono
+            sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
+            sudo pacman -S --noconfirm plasma-meta konsole dolphin discover kdeconnect partitionmanager ffmpegthumbs dolphin-plugins
+            sudo pacman -S --noconfirm ark
+            sudo systemctl enable sddm
+            
+            touch "$state_file"
+            echo "Plasma instalado. Reinicie para aplicar."
+        fi
+    fi
+}
+
+de() {
+    while true; do
+        clear
+        echo "=== Ambiente Desktop ==="
         echo "1) Cosmic"
         echo "2) Gnome"
         echo "3) Plasma"
-        read -p "Opção: " opcao
+        echo "4) Voltar"
+        echo
+        read -p "Selecione uma opção: " opcao
         
         case $opcao in
-            1)
-                if confirm "Instalar Cosmic?"; then
-                    echo "Instalando Cosmic..."
-                    
-                    sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono
-                    sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
-                    sudo pacman -S --noconfirm cosmic-session cosmic-terminal cosmic-files cosmic-store cosmic-wallpapers xdg-user-dirs croc
-                    sudo pacman -S --noconfirm gdu
-                    sudo systemctl enable cosmic-greeter
-                    
-                    echo "cosmic" > "$state_file"
-                    echo "Cosmic instalado. Reinicie para aplicar."
-                fi
-                ;;
-            2)
-                if confirm "Instalar Gnome?"; then
-                    echo "Instalando Gnome..."
-                    
-                    sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono
-                    sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
-                    sudo pacman -S --noconfirm gnome-shell gnome-console gnome-software gnome-tweaks gnome-control-center gnome-disk-utility
-                    sudo pacman -S --noconfirm gdm
-                    sudo systemctl enable gdm
-                    
-                    echo "gnome" > "$state_file"
-                    echo "Gnome instalado. Reinicie para aplicar."
-                fi
-                ;;
-            3)
-                if confirm "Instalar Plasma?"; then
-                    echo "Instalando Plasma..."
-                    
-                    sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono
-                    sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
-                    sudo pacman -S --noconfirm plasma-meta konsole dolphin discover kdeconnect partitionmanager ffmpegthumbs dolphin-plugins
-                    sudo pacman -S --noconfirm ark
-                    sudo systemctl enable sddm
-                    
-                    echo "plasma" > "$state_file"
-                    echo "Plasma instalado. Reinicie para aplicar."
-                fi
-                ;;
-            *)
-                echo "Opção inválida."
-                ;;
+            1) clear; de_cosmic ;;
+            2) clear; de_gnome ;;
+            3) clear; de_plasma ;;
+            4) return ;;
+            *) ;;
         esac
-    fi
+        
+        read -p "Pressione Enter para continuar..."
+    done
 }
 
 apparmor() {
