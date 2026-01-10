@@ -20,57 +20,874 @@ cleanup_files() {
     done
 }
 
-cpu_ondemand() {
-    local state_file="$STATE_DIR/cpu_ondemand"
+ensure_flatpak() {
+    if ! pacman -Q flatpak &>/dev/null; then
+        if confirm "Flatpak não está instalado. Instalar?"; then
+            sudo pacman -S --noconfirm flatpak
+            flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+        else
+            return 1
+        fi
+    fi
+    return 0
+}
+
+ensure_yay() {
+    if ! pacman -Q yay &>/dev/null; then
+        if confirm "Yay não está instalado. Instalar?"; then
+            sudo pacman -S --noconfirm base-devel yay
+        else
+            return 1
+        fi
+    fi
+    return 0
+}
+
+ensure_docker() {
+    if ! pacman -Q docker &>/dev/null; then
+        if confirm "Docker não está instalado. Instalar?"; then
+            sudo pacman -S --noconfirm docker docker-compose
+            sudo systemctl enable --now docker.service docker.socket
+            sudo usermod -aG docker "$USER"
+        else
+            return 1
+        fi
+    fi
+    return 0
+}
+
+android_studio() {
+    local state_file="$STATE_DIR/android_studio"
     
-    if [ -f "$state_file" ] || [ -f "/etc/systemd/system/set-ondemand-governor.service" ]; then
-        if confirm "CPU Ondemand detectado. Desinstalar?"; then
-            echo "Desinstalando CPU Ondemand..."
-            
-            sudo systemctl stop set-ondemand-governor.service 2>/dev/null || true
-            sudo systemctl disable set-ondemand-governor.service 2>/dev/null || true
-            
-            sudo rm -f /etc/systemd/system/set-ondemand-governor.service 2>/dev/null || true
-            sudo rm -f /etc/default/grub.d/01_intel_pstate_disable 2>/dev/null || true
-            sudo rm -f /etc/kernel/cmdline.d/10-intel-pstate-disable.conf 2>/dev/null || true
-            
-            sudo rm -f /usr/local/bin/set-ondemand-governor.sh 2>/dev/null || true
-            
-            sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
-            sudo bootctl update 2>/dev/null || true
-            
+    if [ -f "$state_file" ] || (flatpak list --app 2>/dev/null | grep -q com.google.AndroidStudio); then
+        if confirm "Android Studio detectado. Desinstalar?"; then
+            echo "Desinstalando Android Studio..."
+            flatpak uninstall --user -y com.google.AndroidStudio 2>/dev/null || true
             cleanup_files "$state_file"
-            echo "CPU Ondemand desinstalado. Reinicie para aplicar."
+            echo "Android Studio desinstalado."
         fi
     else
-        if confirm "Instalar CPU Ondemand?"; then
-            echo "Instalando CPU Ondemand..."
+        if confirm "Instalar Android Studio?"; then
+            echo "Instalando Android Studio..."
+            if ensure_flatpak; then
+                flatpak install --user --noninteractive flathub com.google.AndroidStudio
+                touch "$state_file"
+                echo "Android Studio instalado."
+            fi
+        fi
+    fi
+}
+
+godot() {
+    local state_file="$STATE_DIR/godot"
+    
+    if [ -f "$state_file" ] || (flatpak list --app 2>/dev/null | grep -q org.godotengine.Godot); then
+        if confirm "Godot Engine detectado. Desinstalar?"; then
+            echo "Desinstalando Godot Engine..."
+            flatpak uninstall --user -y org.godotengine.Godot 2>/dev/null || true
+            cleanup_files "$state_file" "$HOME/.local/share/applications/godot.desktop"
+            echo "Godot Engine desinstalado."
+        fi
+    else
+        if confirm "Instalar Godot Engine?"; then
+            echo "Instalando Godot Engine..."
+            if ensure_flatpak; then
+                flatpak install --user --noninteractive flathub org.godotengine.Godot
+                touch "$state_file"
+                echo "Godot Engine instalado."
+            fi
+        fi
+    fi
+}
+
+httpie() {
+    local state_file="$STATE_DIR/httpie"
+    
+    if [ -f "$state_file" ] || (flatpak list --app 2>/dev/null | grep -q io.httpie.Httpie); then
+        if confirm "HTTPie detectado. Desinstalar?"; then
+            echo "Desinstalando HTTPie..."
+            flatpak uninstall --user -y io.httpie.Httpie 2>/dev/null || true
+            cleanup_files "$state_file"
+            echo "HTTPie desinstalado."
+        fi
+    else
+        if confirm "Instalar HTTPie?"; then
+            echo "Instalando HTTPie..."
+            if ensure_flatpak; then
+                flatpak install --user --noninteractive flathub io.httpie.Httpie
+                touch "$state_file"
+                echo "HTTPie instalado."
+            fi
+        fi
+    fi
+}
+
+insomnia() {
+    local state_file="$STATE_DIR/insomnia"
+    
+    if [ -f "$state_file" ] || (flatpak list --app 2>/dev/null | grep -q rest.insomnia.Insomnia); then
+        if confirm "Insomnia detectado. Desinstalar?"; then
+            echo "Desinstalando Insomnia..."
+            flatpak uninstall --user -y rest.insomnia.Insomnia 2>/dev/null || true
+            cleanup_files "$state_file"
+            echo "Insomnia desinstalado."
+        fi
+    else
+        if confirm "Instalar Insomnia?"; then
+            echo "Instalando Insomnia..."
+            if ensure_flatpak; then
+                flatpak install --user --noninteractive flathub rest.insomnia.Insomnia
+                touch "$state_file"
+                echo "Insomnia instalado."
+            fi
+        fi
+    fi
+}
+
+jetbrains_toolbox() {
+    local state_file="$STATE_DIR/jetbrains_toolbox"
+    local toolbox_dir="$HOME/.local/share/JetBrains/Toolbox"
+    
+    if [ -f "$state_file" ] || [ -f "$toolbox_dir/bin/jetbrains-toolbox" ]; then
+        if confirm "JetBrains Toolbox detectado. Desinstalar?"; then
+            echo "Desinstalando JetBrains Toolbox..."
+            "$toolbox_dir/bin/jetbrains-toolbox" --uninstall 2>/dev/null || true
+            cleanup_files "$state_file" "$HOME/.local/share/applications/jetbrains-toolbox.desktop" "$toolbox_dir" "$HOME/.local/share/JetBrains"
+            echo "JetBrains Toolbox desinstalado."
+        fi
+    else
+        if confirm "Instalar JetBrains Toolbox?"; then
+            echo "Instalando JetBrains Toolbox..."
+            
+            curl -fsSL 'https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release' | \
+            grep -Po '"linux":\{"link":"\K[^"]+' | \
+            curl -L -o- | tar -xz -C /tmp
+            
+            /tmp/jetbrains-toolbox-*/jetbrains-toolbox
+            rm -rf /tmp/jetbrains-toolbox-*
+            
+            touch "$state_file"
+            echo "JetBrains Toolbox instalado."
+        fi
+    fi
+}
+
+postman() {
+    local state_file="$STATE_DIR/postman"
+    
+    if [ -f "$state_file" ] || (flatpak list --app 2>/dev/null | grep -q com.getpostman.Postman); then
+        if confirm "Postman detectado. Desinstalar?"; then
+            echo "Desinstalando Postman..."
+            flatpak uninstall --user -y com.getpostman.Postman 2>/dev/null || true
+            cleanup_files "$state_file"
+            echo "Postman desinstalado."
+        fi
+    else
+        if confirm "Instalar Postman?"; then
+            echo "Instalando Postman..."
+            if ensure_flatpak; then
+                flatpak install --user --noninteractive flathub com.getpostman.Postman
+                touch "$state_file"
+                echo "Postman instalado."
+            fi
+        fi
+    fi
+}
+
+sublime_text() {
+    local state_file="$STATE_DIR/sublime_text"
+    local pkg_sublime="sublime-text"
+    
+    if [ -f "$state_file" ] || (pacman -Q sublime-text &>/dev/null); then
+        if confirm "Sublime Text detectado. Desinstalar?"; then
+            echo "Desinstalando Sublime Text..."
+            sudo pacman -Rsnu --noconfirm $pkg_sublime || true
+            cleanup_files "$state_file"
+            echo "Sublime Text desinstalado."
+        fi
+    else
+        if confirm "Instalar Sublime Text?"; then
+            echo "Instalando Sublime Text..."
+            
+            curl -O https://download.sublimetext.com/sublimehq-pub.gpg
+            sudo pacman-key --add sublimehq-pub.gpg
+            sudo pacman-key --lsign-key 8A8F901A
+            rm sublimehq-pub.gpg
+            
+            echo -e "\n[sublime-text]\nServer = https://download.sublimetext.com/arch/stable/x86_64" | sudo tee -a /etc/pacman.conf
+            sudo pacman -Syu --noconfirm $pkg_sublime
+            
+            touch "$state_file"
+            echo "Sublime Text instalado."
+        fi
+    fi
+}
+
+vscodium() {
+    local state_file="$STATE_DIR/vscodium"
+    
+    if [ -f "$state_file" ] || (flatpak list --app 2>/dev/null | grep -q com.vscodium.codium); then
+        if confirm "VSCodium detectado. Desinstalar?"; then
+            echo "Desinstalando VSCodium..."
+            flatpak uninstall --user -y com.vscodium.codium 2>/dev/null || true
+            cleanup_files "$state_file"
+            echo "VSCodium desinstalado."
+        fi
+    else
+        if confirm "Instalar VSCodium?"; then
+            echo "Instalando VSCodium..."
+            if ensure_flatpak; then
+                flatpak install --user --noninteractive flathub com.vscodium.codium
+                touch "$state_file"
+                echo "VSCodium instalado."
+            fi
+        fi
+    fi
+}
+
+visual_studio_code() {
+    local state_file="$STATE_DIR/visual_studio_code"
+    local pkg_vscode="visual-studio-code-bin"
+    
+    if [ -f "$state_file" ] || (pacman -Q visual-studio-code-bin &>/dev/null); then
+        if confirm "Visual Studio Code detectado. Desinstalar?"; then
+            echo "Desinstalando Visual Studio Code..."
+            if pacman -Qq visual-studio-code-bin &>/dev/null; then
+                if ensure_yay; then
+                    yay -Rsnu --noconfirm $pkg_vscode || true
+                fi
+            fi
+            cleanup_files "$state_file"
+            echo "Visual Studio Code desinstalado."
+        fi
+    else
+        if confirm "Instalar Visual Studio Code?"; then
+            echo "Instalando Visual Studio Code..."
+            if ensure_yay; then
+                yay -S --noconfirm $pkg_vscode
+                touch "$state_file"
+                echo "Visual Studio Code instalado."
+            fi
+        fi
+    fi
+}
+
+zed() {
+    local state_file="$STATE_DIR/zed"
+    
+    if [ -f "$state_file" ] || (flatpak list --app 2>/dev/null | grep -q dev.zed.Zed); then
+        if confirm "Zed detectado. Desinstalar?"; then
+            echo "Desinstalando Zed..."
+            flatpak uninstall --user -y dev.zed.Zed 2>/dev/null || true
+            cleanup_files "$state_file"
+            echo "Zed desinstalado."
+        fi
+    else
+        if confirm "Instalar Zed?"; then
+            echo "Instalando Zed..."
+            if ensure_flatpak; then
+                flatpak install --user --noninteractive flathub dev.zed.Zed
+                touch "$state_file"
+                echo "Zed instalado."
+            fi
+        fi
+    fi
+}
+
+portainer() {
+    local state_file="$STATE_DIR/portainer"
+    
+    if [ -f "$state_file" ] || (docker ps -a --format "{{.Names}}" 2>/dev/null | grep -q portainer); then
+        if confirm "Portainer detectado. Desinstalar?"; then
+            echo "Desinstalando Portainer..."
+            docker stop portainer 2>/dev/null || true
+            docker rm portainer 2>/dev/null || true
+            docker volume rm portainer_data 2>/dev/null || true
+            cleanup_files "$state_file"
+            echo "Portainer desinstalado."
+        fi
+    else
+        if confirm "Instalar Portainer CE?"; then
+            echo "Instalando Portainer CE..."
+            if ensure_docker; then
+                docker volume create portainer_data
+                docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
+                touch "$state_file"
+                echo "Portainer instalado. Acesse: https://localhost:9443"
+            fi
+        fi
+    fi
+}
+
+docker() {
+    local state_file="$STATE_DIR/docker"
+    local pkg_docker="docker docker-compose"
+    
+    if [ -f "$state_file" ] || (pacman -Q docker &>/dev/null); then
+        if confirm "Docker detectado. Desinstalar?"; then
+            echo "Desinstalando Docker..."
+            
+            if docker ps -a --format "{{.Names}}" 2>/dev/null | grep -q portainer; then
+                if confirm "Portainer está instalado. Desinstalar também?"; then
+                    portainer
+                fi
+            fi
+            
+            sudo systemctl stop docker.service docker.socket 2>/dev/null || true
+            sudo systemctl disable docker.service docker.socket 2>/dev/null || true
+            
+            if pacman -Qq docker docker-compose &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_docker || true
+            fi
+            
+            sudo rm -rf /var/lib/docker 2>/dev/null || true
+            sudo groupdel docker 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "Docker desinstalado."
+        fi
+    else
+        if confirm "Instalar Docker?"; then
+            echo "Instalando Docker..."
+            
+            sudo pacman -S --noconfirm $pkg_docker
+            sudo systemctl enable --now docker.service docker.socket
+            sudo usermod -aG docker "$USER"
+            
+            touch "$state_file"
+            echo "Docker instalado. Reinicie para aplicar."
+        fi
+    fi
+}
+
+java_openjdk() {
+    local state_file="$STATE_DIR/java_openjdk"
+    local pkg_jdk="jdk-openjdk"
+    
+    if [ -f "$state_file" ] || (pacman -Q jdk-openjdk &>/dev/null); then
+        if confirm "Java OpenJDK detectado. Desinstalar?"; then
+            echo "Desinstalando Java OpenJDK..."
+            
+            sudo pacman -Rsnu --noconfirm $pkg_jdk || true
+            
+            cleanup_files "$state_file"
+            echo "Java OpenJDK desinstalado."
+        fi
+    else
+        if confirm "Instalar Java OpenJDk?"; then
+            echo "Instalando Java OpenJDK..."
+            
+            sudo pacman -S --noconfirm $pkg_jdk
+            
+            touch "$state_file"
+            echo "Java OpenJDK instalado."
+        fi
+    fi
+}
+
+maven() {
+    local state_file="$STATE_DIR/maven"
+    local pkg_maven="maven"
+    
+    if [ -f "$state_file" ] || (pacman -Q maven &>/dev/null); then
+        if confirm "Maven detectado. Desinstalar?"; then
+            echo "Desinstalando Maven..."
+            
+            if pacman -Qq maven &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_maven || true
+            fi
+            
+            cleanup_files "$state_file"
+            echo "Maven desinstalado."
+        fi
+    else
+        if confirm "Instalar Maven?"; then
+            echo "Instalando Maven..."
+            
+            sudo pacman -S --noconfirm $pkg_maven
+            touch "$state_file"
+            echo "Maven instalado."
+        fi
+    fi
+}
+
+mise() {
+    local state_file="$STATE_DIR/mise"
+    local pkg_mise="mise"
+    
+    if [ -f "$state_file" ] || (pacman -Q mise &>/dev/null); then
+        if confirm "Mise detectado. Desinstalar?"; then
+            echo "Desinstalando Mise..."
+            
+            if pacman -Qq mise &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_mise || true
+            fi
+            
+            cleanup_files "$state_file"
+            echo "Mise desinstalado."
+        fi
+    else
+        if confirm "Instalar Mise?"; then
+            echo "Instalando Mise..."
+            
+            sudo pacman -S --noconfirm $pkg_mise
+            touch "$state_file"
+            echo "Mise instalado."
+        fi
+    fi
+}
+
+nvm() {
+    local state_file="$STATE_DIR/nvm"
+    local pkg_nvm="nvm"
+    
+    if [ -f "$state_file" ] || (pacman -Q nvm &>/dev/null); then
+        if confirm "NVM detectado. Desinstalar?"; then
+            echo "Desinstalando NVM..."
+            
+            if pacman -Qq nvm &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_nvm || true
+            fi
+            
+            cleanup_files "$state_file" "$HOME/.nvm"
+            echo "NVM desinstalado."
+        fi
+    else
+        if confirm "Instalar NVM (Node Version Manager)?"; then
+            echo "Instalando NVM..."
+            
+            sudo pacman -S --noconfirm $pkg_nvm
+            touch "$state_file"
+            echo "NVM instalado."
+        fi
+    fi
+}
+
+oh_my_zsh() {
+    local state_file="$STATE_DIR/oh_my_zsh"
+    local pkg_zsh="zsh"
+    
+    if [ -f "$state_file" ] || (pacman -Q zsh &>/dev/null); then
+        if confirm "Oh My Zsh detectado. Desinstalar?"; then
+            echo "Desinstalando Oh My Zsh..."
+            
+            if pacman -Qq zsh &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_zsh || true
+            fi
+            
+            rm -rf "$HOME/.oh-my-zsh" 2>/dev/null || true
+            sudo chsh -s "$(which bash)" "$USER" 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "Oh My Zsh desinstalado."
+        fi
+    else
+        if confirm "Instalar Oh My Zsh?"; then
+            echo "Instalando Oh My Zsh..."
+            
+            sudo pacman -S --noconfirm $pkg_zsh
+            sudo chsh -s "$(which zsh)" "$USER"
+            touch "$state_file"
+            echo "Oh My Zsh instalado."
+        fi
+    fi
+}
+
+pyenv() {
+    local state_file="$STATE_DIR/pyenv"
+    local pkg_pyenv="pyenv"
+    
+    if [ -f "$state_file" ] || (pacman -Q pyenv &>/dev/null); then
+        if confirm "PyEnv detectado. Desinstalar?"; then
+            echo "Desinstalando PyEnv..."
+            
+            if pacman -Qq pyenv &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_pyenv || true
+            fi
+            
+            cleanup_files "$state_file" "$HOME/.pyenv"
+            echo "PyEnv desinstalado."
+        fi
+    else
+        if confirm "Instalar PyEnv?"; then
+            echo "Instalando PyEnv..."
+            
+            sudo pacman -S --noconfirm $pkg_pyenv
+            touch "$state_file"
+            echo "PyEnv instalado."
+        fi
+    fi
+}
+
+sdkman() {
+    local state_file="$STATE_DIR/sdkman"
+    
+    if [ -f "$state_file" ] || [ -d "$HOME/.sdkman" ]; then
+        if confirm "SDKMAN detectado. Desinstalar?"; then
+            echo "Desinstalando SDKMAN..."
+            
+            rm -rf "$HOME/.sdkman" 2>/dev/null || true
+            
+            sed -i '/SDKMAN/d' "$HOME/.bashrc" 2>/dev/null || true
+            sed -i '/SDKMAN/d' "$HOME/.zshrc" 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "SDKMAN desinstalado."
+        fi
+    else
+        if confirm "Instalar SDKMAN?"; then
+            echo "Instalando SDKMAN..."
+            
+            sudo pacman -S --noconfirm zip unzip
+            curl -s "https://get.sdkman.io?ci=true" | bash
+            
+            touch "$state_file"
+            echo "SDKMAN instalado."
+        fi
+    fi
+}
+
+tailscale() {
+    local state_file="$STATE_DIR/tailscale"
+    local pkg_tailscale="tailscale"
+    
+    if [ -f "$state_file" ] || (pacman -Q tailscale &>/dev/null); then
+        if confirm "Tailscale detectado. Desinstalar?"; then
+            echo "Desinstalando Tailscale..."
+            
+            sudo systemctl stop tailscaled 2>/dev/null || true
+            sudo systemctl disable tailscaled 2>/dev/null || true
+            
+            if pacman -Qq tailscale &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_tailscale || true
+            fi
+            
+            cleanup_files "$state_file"
+            echo "Tailscale desinstalado."
+        fi
+    else
+        if confirm "Instalar Tailscale?"; then
+            echo "Instalando Tailscale..."
+            
+            sudo pacman -S --noconfirm $pkg_tailscale
+            sudo systemctl enable --now tailscaled
+            
+            touch "$state_file"
+            echo "Tailscale instalado."
+        fi
+    fi
+}
+
+zerotier() {
+    local state_file="$STATE_DIR/zerotier"
+    local pkg_zerotier="zerotier-one"
+    
+    if [ -f "$state_file" ] || (pacman -Q zerotier-one &>/dev/null); then
+        if confirm "ZeroTier detectado. Desinstalar?"; then
+            echo "Desinstalando ZeroTier..."
+            
+            sudo systemctl stop zerotier-one 2>/dev/null || true
+            sudo systemctl disable zerotier-one 2>/dev/null || true
+            
+            if pacman -Qq zerotier-one &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_zerotier || true
+            fi
+            
+            cleanup_files "$state_file"
+            echo "ZeroTier desinstalado."
+        fi
+    else
+        if confirm "Instalar ZeroTier?"; then
+            echo "Instalando ZeroTier..."
+            
+            sudo pacman -S --noconfirm $pkg_zerotier
+            sudo systemctl enable --now zerotier-one
+            
+            touch "$state_file"
+            echo "ZeroTier instalado."
+        fi
+    fi
+}
+
+pnpm() {
+    local state_file="$STATE_DIR/pnpm"
+    local pkg_pnpm="pnpm"
+    
+    if [ -f "$state_file" ] || (pacman -Q pnpm &>/dev/null); then
+        if confirm "PNPM detectado. Desinstalar?"; then
+            echo "Desinstalando PNPM..."
+            
+            if pacman -Qq pnpm &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_pnpm || true
+            fi
+            
+            cleanup_files "$state_file"
+            echo "PNPM desinstalado."
+        fi
+    else
+        if confirm "Instalar PNPM?"; then
+            echo "Instalando PNPM..."
+            
+            sudo pacman -S --noconfirm $pkg_pnpm
+            touch "$state_file"
+            echo "PNPM instalado."
+        fi
+    fi
+}
+
+archsb() {
+    local state_file="$STATE_DIR/archsb"
+    local pkg_archsb="sbctl efibootmgr"
+    
+    if [ -f "$state_file" ] || (pacman -Q sbctl &>/dev/null); then
+        if confirm "Secure Boot detectado. Desinstalar?"; then
+            echo "Desinstalando Secure Boot..."
+            
+            sudo sbctl remove-keys 2>/dev/null || true
+            sudo rm -rf /usr/share/secureboot 2>/dev/null || true
+            sudo rm -f /boot/*.efi.signed 2>/dev/null || true
+            
+            if pacman -Qq sbctl efibootmgr &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_archsb || true
+            fi
+            
+            cleanup_files "$state_file"
+            echo "Secure Boot desinstalado."
+        fi
+    else
+        if confirm "Configurar Secure Boot?"; then
+            echo "Configurando Secure Boot..."
+            
+            sudo pacman -S --noconfirm $pkg_archsb
+            
+            if sbctl status | grep -qi "secure boot.*disabled" && sbctl status | grep -qi "setup mode.*enabled"; then
+                if command -v grub-install &>/dev/null; then
+                    sudo grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --modules="tpm" --disable-shim-lock
+                fi
+                
+                sudo sbctl create-keys
+                sudo sbctl enroll-keys -m -f
+                
+                while IFS= read -r line; do
+                    if [[ "$line" =~ ✗ ]]; then
+                        file=$(echo "$line" | awk '{print $2}')
+                        echo "Assinando: $file"
+                        sudo sbctl sign -s "$file"
+                    fi
+                done < <(sudo sbctl verify)
+                
+                sudo sbctl verify
+                touch "$state_file"
+                echo "Secure Boot configurado."
+            else
+                echo "Secure Boot não está desabilitado ou Setup Mode não está ativado."
+                return 1
+            fi
+        fi
+    fi
+}
+
+preload() {
+    local state_file="$STATE_DIR/preload"
+    local pkg_preload="preload"
+    
+    if [ -f "$state_file" ] || (pacman -Q preload &>/dev/null); then
+        if confirm "Preload detectado. Desinstalar?"; then
+            echo "Desinstalando Preload..."
+            
+            sudo systemctl stop preload 2>/dev/null || true
+            sudo systemctl disable preload 2>/dev/null || true
+            
+            if pacman -Qq preload &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_preload || true
+            fi
+            
+            cleanup_files "$state_file"
+            echo "Preload desinstalado."
+        fi
+    else
+        local total_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+        local total_gb=$(( total_kb / 1024 / 1024 ))
+        
+        if [ $total_gb -gt 12 ]; then
+            if confirm "Instalar Preload (otimização de RAM > 12GB)?"; then
+                echo "Instalando Preload..."
+                
+                sudo pacman -S --noconfirm $pkg_preload
+                sudo systemctl enable --now preload
+                
+                touch "$state_file"
+                echo "Preload instalado."
+            fi
+        else
+            echo "RAM insuficiente para Preload (requer > 12GB)."
+        fi
+    fi
+}
+
+minfreefix() {
+    local state_file="$STATE_DIR/minfreefix"
+    local sysctl_file="/etc/sysctl.d/99-minfreefix.conf"
+    
+    if [ -f "$state_file" ] || [ -f "$sysctl_file" ]; then
+        if confirm "MinFreeFix detectado. Desinstalar?"; then
+            echo "Desinstalando MinFreeFix..."
+            
+            sudo rm -f "$sysctl_file" 2>/dev/null || true
+            sudo sysctl --system 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "MinFreeFix desinstalado."
+        fi
+    else
+        if confirm "Configurar vm.min_free_kbytes dinâmico?"; then
+            echo "Configurando MinFreeFix..."
+            
+            local total_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+            local min_free_kbytes=$(( total_kb / 128 ))
+            
+            echo "vm.min_free_kbytes = $min_free_kbytes" | sudo tee "$sysctl_file" > /dev/null
+            sudo sysctl -p "$sysctl_file"
+            
+            touch "$state_file"
+            echo "MinFreeFix configurado. vm.min_free_kbytes = $min_free_kbytes"
+        fi
+    fi
+}
+
+mscorefonts() {
+    local state_file="$STATE_DIR/mscorefonts"
+    local font_dir="$HOME/.local/share/fonts/mscorefonts"
+    local pkg_cabextract="cabextract"
+    
+    if [ -f "$state_file" ] || [ -d "$font_dir" ]; then
+        if confirm "Microsoft Core Fonts detectado. Desinstalar?"; then
+            echo "Desinstalando Microsoft Core Fonts..."
+            
+            if pacman -Qq cabextract &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_cabextract || true
+            fi
+            
+            cleanup_files "$state_file" "$font_dir" "$HOME/*32.exe" "$HOME/fonts"
+            fc-cache -f
+            
+            echo "Microsoft Core Fonts desinstalado."
+        fi
+    else
+        if confirm "Instalar Microsoft Core Fonts?"; then
+            echo "Instalando Microsoft Core Fonts..."
+            
+            sudo pacman -S --noconfirm $pkg_cabextract
+            
+            local fonts=(
+                "http://downloads.sourceforge.net/corefonts/andale32.exe"
+                "http://downloads.sourceforge.net/corefonts/arial32.exe"
+                "http://downloads.sourceforge.net/corefonts/arialb32.exe"
+                "http://downloads.sourceforge.net/corefonts/comic32.exe"
+                "http://downloads.sourceforge.net/corefonts/courie32.exe"
+                "http://downloads.sourceforge.net/corefonts/georgi32.exe"
+                "http://downloads.sourceforge.net/corefonts/impact32.exe"
+                "http://downloads.sourceforge.net/corefonts/times32.exe"
+                "http://downloads.sourceforge.net/corefonts/trebuc32.exe"
+                "http://downloads.sourceforge.net/corefonts/verdan32.exe"
+                "http://downloads.sourceforge.net/corefonts/webdin32.exe"
+            )
+            
+            mkdir -p "$HOME/fonts"
+            
+            for font_url in "${fonts[@]}"; do
+                curl -s -L "$font_url" -o "$HOME/$(basename "$font_url")"
+                cabextract "$HOME/$(basename "$font_url")" -d "$HOME/fonts"
+                rm "$HOME/$(basename "$font_url")"
+            done
+            
+            mkdir -p "$font_dir"
+            cp -v "$HOME/fonts"/*.ttf "$HOME/fonts"/*.TTF "$font_dir/"
+            rm -rf "$HOME/fonts"
+            
+            fc-cache -f
+            touch "$state_file"
+            echo "Microsoft Core Fonts instalado."
+        fi
+    fi
+}
+
+psaver() {
+    local state_file="$STATE_DIR/psaver"
+    
+    if [ -f "$state_file" ] || [ -f "/etc/systemd/system/powersave.service" ]; then
+        if confirm "Powersave detectado. Desinstalar?"; then
+            echo "Desinstalando Powersave..."
+            
+            sudo systemctl stop powersave.service 2>/dev/null || true
+            sudo systemctl disable powersave.service 2>/dev/null || true
+            
+            sudo rm -f /etc/systemd/system/powersave.service 2>/dev/null || true
+            sudo rm -f /usr/local/bin/powersave.sh 2>/dev/null || true
+            
+            sudo sed -i '/powersave/d' /etc/default/grub 2>/dev/null || true
+            sudo rm -f /etc/default/grub.d/powersave.cfg 2>/dev/null || true
+            sudo mkdir -p /boot/grub 2>/dev/null || true
+            sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "Powersave desinstalado. Reinicie para aplicar."
+        fi
+    else
+        if confirm "Instalar Powersave?"; then
+            echo "Instalando Powersave..."
             
             echo '#!/bin/bash
-echo "ondemand" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor' | sudo tee /usr/local/bin/set-ondemand-governor.sh
+set -e
+
+CPU_GOV="powersave"
+SCHEDULER="none"
+ENERGY_PERF="power"
+CPU_MAX="100"
+CPU_MIN="0"
+
+apply_settings() {
+    echo "$CPU_GOV" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
+    echo "$ENERGY_PERF" | tee /sys/devices/system/cpu/cpu*/power/energy_performance_preference >/dev/null 2>&1 || true
+    
+    if [ -f /sys/devices/system/cpu/intel_pstate/max_perf_pct ]; then
+        echo "$CPU_MAX" | tee /sys/devices/system/cpu/intel_pstate/max_perf_pct >/dev/null
+        echo "$CPU_MIN" | tee /sys/devices/system/cpu/intel_pstate/min_perf_pct >/dev/null
+    fi
+    
+    if [ -f /sys/block/sda/queue/scheduler ]; then
+        echo "$SCHEDULER" | tee /sys/block/sd*/queue/scheduler >/dev/null 2>&1 || true
+    fi
+}
+
+apply_settings
+exit 0' | sudo tee /usr/local/bin/powersave.sh >/dev/null
             
-            sudo chmod +x /usr/local/bin/set-ondemand-governor.sh
+            sudo chmod +x /usr/local/bin/powersave.sh
             
             echo '[Unit]
-Description=Set CPU governor to ondemand
-After=sysinit.target
+Description=Power Save Settings
+After=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/set-ondemand-governor.sh
+ExecStart=/usr/local/bin/powersave.sh
+RemainAfterExit=yes
 
 [Install]
-WantedBy=multi-user.target' | sudo tee /etc/systemd/system/set-ondemand-governor.service
+WantedBy=multi-user.target' | sudo tee /etc/systemd/system/powersave.service >/dev/null
             
-            sudo systemctl enable set-ondemand-governor.service
+            sudo systemctl enable powersave.service
+            sudo systemctl start powersave.service
             
             sudo mkdir -p /etc/default/grub.d
-            echo 'GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} intel_pstate=disable"' | sudo tee /etc/default/grub.d/01_intel_pstate_disable
+            echo 'GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} intel_pstate=passive"' | sudo tee /etc/default/grub.d/powersave.cfg >/dev/null
             
-            sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
+            sudo mkdir -p /boot/grub 2>/dev/null || true
+            sudo grub-mkconfig -o /boot/grub/grub.cfg
             
             touch "$state_file"
-            echo "CPU Ondemand instalado. Reinicie para aplicar."
+            echo "Powersave instalado. Reinicie para aplicar."
         fi
     fi
 }
@@ -118,6 +935,56 @@ swapfile_create() {
     return 0
 }
 
+swapfile_menu_location() {
+    clear
+    echo "=== Seleção de Local do Swapfile ==="
+    echo "1) / (root)"
+    echo "2) /home"
+    echo "3) Voltar"
+    echo
+    read -p "Opção: " location
+    
+    case $location in
+        1|2) swapfile_menu_size "$location" ;;
+        3) return ;;
+        *) echo "Opção inválida" ;;
+    esac
+}
+
+swapfile_menu_size() {
+    local location="$1"
+    clear
+    echo "=== Tamanho do Swapfile ==="
+    read -p "Tamanho em GB (padrão: 8): " size
+    size=${size:-8}
+    
+    if ! [[ "$size" =~ ^[0-9]+$ ]]; then
+        echo "Tamanho inválido"
+        return
+    fi
+    
+    swapfile_menu_confirm "$location" "$size"
+}
+
+swapfile_menu_confirm() {
+    local location="$1"
+    local size="$2"
+    clear
+    echo "=== Confirmação ==="
+    echo "Local: $( [ "$location" = "1" ] && echo "/ (root)" || echo "/home" )"
+    echo "Tamanho: ${size}GB"
+    echo
+    
+    if confirm "Criar swapfile de ${size}GB?"; then
+        echo "Criando swapfile de ${size}GB..."
+        
+        if swapfile_create "$location" "$size"; then
+            touch "$STATE_DIR/swapfile"
+            echo "Swapfile criado com sucesso."
+        fi
+    fi
+}
+
 swapfile() {
     local state_file="$STATE_DIR/swapfile"
     
@@ -157,31 +1024,467 @@ swapfile() {
             echo "Swapfile desinstalado."
         fi
     else
-        echo "Onde criar o swapfile?"
-        echo "1) / (root)"
-        echo "2) /home"
-        read -p "Opção: " location
-        
-        if [ "$location" != "1" ] && [ "$location" != "2" ]; then
-            echo "Opção inválida"
-            return
-        fi
-        
-        read -p "Tamanho em GB (padrão: 8): " size
-        size=${size:-8}
-        
-        if ! [[ "$size" =~ ^[0-9]+$ ]]; then
-            echo "Tamanho inválido"
-            return
-        fi
-        
-        if confirm "Criar swapfile de ${size}GB?"; then
-            echo "Criando swapfile de ${size}GB..."
+        swapfile_menu_location
+    fi
+}
+
+cpu_ondemand() {
+    local state_file="$STATE_DIR/cpu_ondemand"
+    
+    if [ -f "$state_file" ] || [ -f "/etc/systemd/system/set-ondemand-governor.service" ]; then
+        if confirm "CPU Ondemand detectado. Desinstalar?"; then
+            echo "Desinstalando CPU Ondemand..."
             
-            if swapfile_create "$location" "$size"; then
-                touch "$state_file"
-                echo "Swapfile criado com sucesso."
+            sudo systemctl stop set-ondemand-governor.service 2>/dev/null || true
+            sudo systemctl disable set-ondemand-governor.service 2>/dev/null || true
+            
+            sudo rm -f /etc/systemd/system/set-ondemand-governor.service 2>/dev/null || true
+            sudo rm -f /etc/default/grub.d/01_intel_pstate_disable 2>/dev/null || true
+            sudo rm -f /etc/kernel/cmdline.d/10-intel-pstate-disable.conf 2>/dev/null || true
+            
+            sudo rm -f /usr/local/bin/set-ondemand-governor.sh 2>/dev/null || true
+            
+            sudo mkdir -p /boot/grub 2>/dev/null || true
+            sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
+            sudo bootctl update 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "CPU Ondemand desinstalado. Reinicie para aplicar."
+        fi
+    else
+        if confirm "Instalar CPU Ondemand?"; then
+            echo "Instalando CPU Ondemand..."
+            
+            echo '#!/bin/bash
+echo "ondemand" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor' | sudo tee /usr/local/bin/set-ondemand-governor.sh
+            
+            sudo chmod +x /usr/local/bin/set-ondemand-governor.sh
+            
+            echo '[Unit]
+Description=Set CPU governor to ondemand
+After=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/set-ondemand-governor.sh
+
+[Install]
+WantedBy=multi-user.target' | sudo tee /etc/systemd/system/set-ondemand-governor.service
+            
+            sudo systemctl enable set-ondemand-governor.service
+            
+            sudo mkdir -p /etc/default/grub.d
+            echo 'GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} intel_pstate=disable"' | sudo tee /etc/default/grub.d/01_intel_pstate_disable
+            
+            sudo mkdir -p /boot/grub 2>/dev/null || true
+            sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
+            
+            touch "$state_file"
+            echo "CPU Ondemand instalado. Reinicie para aplicar."
+        fi
+    fi
+}
+
+cachyconfs() {
+    local state_file="$STATE_DIR/cachyconfs"
+    
+    if [ -f "$state_file" ] || [ -f "/usr/lib/sysctl.d/99-cachyos-settings.conf" ]; then
+        if confirm "CachyOS Configs detectado. Desinstalar?"; then
+            echo "Desinstalando CachyOS Configs..."
+            
+            sudo rm -f /usr/lib/sysctl.d/99-cachyos-settings.conf 2>/dev/null || true
+            sudo sysctl --system 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "CachyOS Configs desinstalado. Reinicie para aplicar."
+        fi
+    else
+        if confirm "Instalar CachyOS Configs?"; then
+            echo "Instalando CachyOS Configs..."
+            
+            sudo mkdir -p /usr/lib/sysctl.d
+            curl -s https://raw.githubusercontent.com/CachyOS/CachyOS-Settings/main/sysctl/99-cachyos-settings.conf | sudo tee /usr/lib/sysctl.d/99-cachyos-settings.conf > /dev/null
+            sudo sysctl --system
+            
+            touch "$state_file"
+            echo "CachyOS Configs instalado. Reinicie para aplicar."
+        fi
+    fi
+}
+
+dsplitm() {
+    local state_file="$STATE_DIR/dsplitm"
+    
+    if [ -f "$state_file" ] || grep -q "split_lock_detect=off" /proc/cmdline 2>/dev/null; then
+        if confirm "Split-lock Mitigation desativado detectado. Desinstalar?"; then
+            echo "Desinstalando desativação de Split-lock Mitigation..."
+            
+            sudo sed -i '/split_lock_detect=off/d' /etc/default/grub 2>/dev/null || true
+            sudo rm -f /etc/default/grub.d/99-split-lock-disable.cfg 2>/dev/null || true
+            sudo rm -f /etc/kernel/cmdline.d/99-split-lock-disable.conf 2>/dev/null || true
+            
+            sudo mkdir -p /boot/grub 2>/dev/null || true
+            sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
+            sudo bootctl update 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "Split-lock Mitigation reativado. Reinicie para aplicar."
+        fi
+    else
+        if confirm "Desativar Split-lock Mitigation?"; then
+            echo "Desativando Split-lock Mitigation..."
+            
+            if pacman -Qq grub &>/dev/null; then
+                sudo mkdir -p /etc/default/grub.d
+                echo 'GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} split_lock_detect=off"' | sudo tee /etc/default/grub.d/99-split-lock-disable.cfg
+                sudo mkdir -p /boot/grub 2>/dev/null || true
+                sudo grub-mkconfig -o /boot/grub/grub.cfg
+            else
+                sudo mkdir -p /etc/kernel/cmdline.d
+                echo "split_lock_detect=off" | sudo tee /etc/kernel/cmdline.d/99-split-lock-disable.conf
+                sudo bootctl update 2>/dev/null || true
             fi
+            
+            touch "$state_file"
+            echo "Split-lock Mitigation desativado. Reinicie para aplicar."
+        fi
+    fi
+}
+
+distrobox_handler() {
+    local state_file="$STATE_DIR/distrobox_handler"
+    local handler_dir="$HOME/.local/distrobox-handler"
+    
+    if [ -f "$state_file" ] || [ -f "$handler_dir/command_not_found_handle" ]; then
+        if confirm "Distrobox Command Handler detectado. Desinstalar?"; then
+            echo "Desinstalando Distrobox Command Handler..."
+            
+            rm -rf "$handler_dir" 2>/dev/null || true
+            sudo rm -f /etc/bash.bashrc.d/99-distrobox-cnf 2>/dev/null || true
+            sudo rm -f /etc/zsh/zshrc.d/99-distrobox-cnf.zsh 2>/dev/null || true
+            sudo rm -f /etc/profile.d/distrobox-host-aliases.sh 2>/dev/null || true
+            
+            if [ -f "$HOME/.bashrc" ]; then
+                grep -v "distrobox-handler" "$HOME/.bashrc" > "$HOME/.bashrc.tmp" && mv "$HOME/.bashrc.tmp" "$HOME/.bashrc"
+            fi
+            
+            if [ -f "$HOME/.zshrc" ]; then
+                grep -v "distrobox-handler" "$HOME/.zshrc" > "$HOME/.zshrc.tmp" && mv "$HOME/.zshrc.tmp" "$HOME/.zshrc"
+            fi
+            
+            cleanup_files "$state_file"
+            echo "Distrobox Command Handler desinstalado."
+        fi
+    else
+        if confirm "Instalar Distrobox Command Handler?"; then
+            echo "Instalando Distrobox Command Handler..."
+            
+            mkdir -p "$handler_dir"
+            
+            echo '#!/bin/bash
+command_not_found_handle() {
+    local cmd="$1"
+    shift
+    if command -v distrobox-host-exec >/dev/null 2>&1; then
+        if distrobox-host-exec which "$cmd" >/dev/null 2>&1; then
+            echo "Command \"$cmd\" not found in container, executing on host..." >&2
+            exec distrobox-host-exec "$cmd" "$@"
+        else
+            echo "bash: $cmd: command not found" >&2
+            return 127
+        fi
+    else
+        echo "bash: $cmd: command not found" >&2
+        return 127
+    fi
+}' > "$handler_dir/command_not_found_handle"
+            
+            echo '#!/bin/bash
+zsh_command_not_found_handler() {
+    local cmd="$1"
+    shift
+    if command -v distrobox-host-exec >/dev/null 2>&1; then
+        if distrobox-host-exec which "$cmd" >/dev/null 2>&1; then
+            echo "Command \"$cmd\" not found in container, executing on host..." >&2
+            exec distrobox-host-exec "$cmd" "$@"
+        else
+            echo "zsh: command not found: $cmd" >&2
+            return 127
+        fi
+    else
+        echo "zsh: command not found: $cmd" >&2
+        return 127
+    fi
+}' > "$handler_dir/zsh_command_not_found_handler"
+            
+            chmod +x "$handler_dir/command_not_found_handle" "$handler_dir/zsh_command_not_found_handler"
+            
+            sudo mkdir -p /etc/bash.bashrc.d
+            echo '# Distrobox Command-Not-Found Handler Integration
+if [ -f "$HOME/.local/distrobox-handler/command_not_found_handle" ]; then
+    source "$HOME/.local/distrobox-handler/command_not_found_handle"
+fi' | sudo tee /etc/bash.bashrc.d/99-distrobox-cnf > /dev/null
+            
+            sudo mkdir -p /etc/zsh/zshrc.d
+            echo '# Distrobox Command-Not-Found Handler Integration for ZSH
+if [ -f "$HOME/.local/distrobox-handler/zsh_command_not_found_handler" ]; then
+    source "$HOME/.local/distrobox-handler/zsh_command_not_found_handler"
+fi' | sudo tee /etc/zsh/zshrc.d/99-distrobox-cnf.zsh > /dev/null
+            
+            echo '# Common host command aliases for distrobox containers
+alias xdg-open="distrobox-host-exec xdg-open"
+alias nautilus="distrobox-host-exec nautilus"
+alias dolphin="distrobox-host-exec dolphin"
+alias htop="distrobox-host-exec htop"
+alias lscpu="distrobox-host-exec lscpu"
+alias lsusb="distrobox-host-exec lsusb"
+alias lspci="distrobox-host-exec lspci"
+alias nmcli="distrobox-host-exec nmcli"
+alias nmtui="distrobox-host-exec nmtui"
+alias flatpak="distrobox-host-exec flatpak"
+alias firefox="distrobox-host-exec firefox"
+alias chromium="distrobox-host-exec chromium"' | sudo tee /etc/profile.d/distrobox-host-aliases.sh > /dev/null
+            
+            if [ -f "$HOME/.bashrc" ]; then
+                grep -q "distrobox-handler" "$HOME/.bashrc" || echo -e '\nif [ -f "$HOME/.local/distrobox-handler/command_not_found_handle" ]; then\n    source "$HOME/.local/distrobox-handler/command_not_found_handle"\nfi' >> "$HOME/.bashrc"
+            fi
+            
+            if [ -f "$HOME/.zshrc" ]; then
+                grep -q "distrobox-handler" "$HOME/.zshrc" || echo -e '\nif [ -f "$HOME/.local/distrobox-handler/zsh_command_not_found_handler" ]; then\n    source "$HOME/.local/distrobox-handler/zsh_command_not_found_handler"\nfi' >> "$HOME/.zshrc"
+            fi
+            
+            touch "$state_file"
+            echo "Distrobox Command Handler instalado."
+        fi
+    fi
+}
+
+winboat() {
+    local state_file="$STATE_DIR/winboat"
+    local pkg_winboat="winboat-bin"
+    
+    if [ -f "$state_file" ] || (pacman -Q winboat-bin &>/dev/null); then
+        if confirm "WinBoat detectado. Desinstalar?"; then
+            echo "Desinstalando WinBoat..."
+            
+            if ensure_yay; then
+                yay -Rsnu --noconfirm $pkg_winboat || true
+            fi
+            
+            flatpak uninstall --user -y com.freerdp.FreeRDP 2>/dev/null || true
+            sudo rm -f /etc/modules-load.d/iptables.conf 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "WinBoat desinstalado."
+        fi
+    else
+        if ! lsmod | grep -q kvm; then
+            echo "KVM não está disponível. Verifique se a virtualização está habilitada no BIOS."
+            return 1
+        fi
+        
+        if confirm "Instalar WinBoat (Windows em container Docker)?"; then
+            echo "Instalando WinBoat..."
+            
+            if ensure_docker; then
+                if ensure_flatpak; then
+                    flatpak install --user --noninteractive flathub com.freerdp.FreeRDP 2>/dev/null || true
+                fi
+                
+                echo -e "ip_tables\niptable_nat" | sudo tee /etc/modules-load.d/iptables.conf > /dev/null
+                
+                if ensure_yay; then
+                    yay -S --noconfirm $pkg_winboat
+                    touch "$state_file"
+                    echo "WinBoat instalado. Reinicie para carregar módulos do kernel."
+                fi
+            fi
+        fi
+    fi
+}
+
+grub_btrfs() {
+    local state_file="$STATE_DIR/grub_btrfs"
+    local pkg_grub_btrfs="grub-btrfs"
+    
+    if [ -f "$state_file" ] || (pacman -Q grub-btrfs &>/dev/null); then
+        if confirm "GRUB Btrfs detectado. Desinstalar?"; then
+            echo "Desinstalando GRUB Btrfs..."
+            
+            sudo systemctl stop grub-btrfsd 2>/dev/null || true
+            sudo systemctl disable grub-btrfsd 2>/dev/null || true
+            
+            if pacman -Qq grub-btrfs &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_grub_btrfs || true
+            fi
+            
+            if pacman -Qq snapper &>/dev/null; then
+                sudo systemctl stop snapper-boot.timer snapper-cleanup.timer 2>/dev/null || true
+                sudo systemctl disable snapper-boot.timer snapper-cleanup.timer 2>/dev/null || true
+                sudo pacman -Rsnu --noconfirm snapper || true
+            fi
+            
+            sudo rm -rf /.snapshots 2>/dev/null || true
+            sudo rm -rf /etc/snapper/configs 2>/dev/null || true
+            sudo mkdir -p /boot/grub 2>/dev/null || true
+            sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "GRUB Btrfs desinstalado. Reinicie para aplicar."
+        fi
+    else
+        if ! findmnt -n -o FSTYPE / | grep -q "btrfs"; then
+            echo "Sistema de arquivos raiz não é Btrfs."
+            return 1
+        fi
+        
+        if confirm "Instalar GRUB Btrfs (snapshots no GRUB)?"; then
+            echo "Instalando GRUB Btrfs..."
+            
+            sudo pacman -S --noconfirm snapper
+            sudo btrfs subvolume delete -R /.snapshots 2>/dev/null || true
+            sudo snapper -c root create-config /
+            sudo snapper -c root create --command pacman 2>/dev/null || true
+            
+            sudo sed -i 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="no"/' /etc/snapper/configs/root 2>/dev/null || true
+            sudo sed -i 's/^NUMBER_LIMIT=.*/NUMBER_LIMIT="5"/' /etc/snapper/configs/root 2>/dev/null || true
+            sudo sed -i 's/^NUMBER_LIMIT_IMPORTANT=.*/NUMBER_LIMIT_IMPORTANT="5"/' /etc/snapper/configs/root 2>/dev/null || true
+            
+            sudo systemctl enable snapper-boot.timer snapper-cleanup.timer
+            sudo systemctl start snapper-cleanup.timer
+            
+            sudo pacman -S --noconfirm $pkg_grub_btrfs
+            sudo mkdir -p /boot/grub 2>/dev/null || true
+            sudo grub-mkconfig -o /boot/grub/grub.cfg
+            sudo systemctl enable --now grub-btrfsd
+            
+            touch "$state_file"
+            echo "GRUB Btrfs instalado. Reinicie para aplicar."
+        fi
+    fi
+}
+
+btrfs_assistant() {
+    local state_file="$STATE_DIR/btrfs_assistant"
+    local pkg_btrfs_assistant="btrfs-assistant"
+    
+    if [ -f "$state_file" ] || (pacman -Q btrfs-assistant &>/dev/null); then
+        if confirm "Btrfs Assistant detectado. Desinstalar?"; then
+            echo "Desinstalando Btrfs Assistant..."
+            
+            if pacman -Qq btrfs-assistant &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_btrfs_assistant || true
+            fi
+            
+            cleanup_files "$state_file"
+            echo "Btrfs Assistant desinstalado."
+        fi
+    else
+        if ! findmnt -n -o FSTYPE / | grep -q "btrfs"; then
+            echo "Sistema de arquivos raiz não é Btrfs."
+            return 1
+        fi
+        
+        if confirm "Instalar Btrfs Assistant?"; then
+            echo "Instalando Btrfs Assistant..."
+            
+            sudo pacman -S --noconfirm $pkg_btrfs_assistant
+            
+            touch "$state_file"
+            echo "Btrfs Assistant instalado."
+        fi
+    fi
+}
+
+thumbnailer() {
+    local state_file="$STATE_DIR/thumbnailer"
+    local pkg_thumbnailer="ffmpegthumbnailer"
+    
+    if [ -f "$state_file" ] || (pacman -Q ffmpegthumbnailer &>/dev/null); then
+        if confirm "Thumbnailer detectado. Desinstalar?"; then
+            echo "Desinstalando Thumbnailer..."
+            
+            if pacman -Qq ffmpegthumbnailer &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_thumbnailer || true
+            fi
+            
+            cleanup_files "$state_file"
+            echo "Thumbnailer desinstalado."
+        fi
+    else
+        if confirm "Instalar Thumbnailer?"; then
+            echo "Instalando Thumbnailer..."
+            
+            sudo pacman -S --noconfirm $pkg_thumbnailer
+            touch "$state_file"
+            echo "Thumbnailer instalado."
+        fi
+    fi
+}
+
+iwd() {
+    local state_file="$STATE_DIR/iwd"
+    local pkg_iwd="iwd"
+    
+    if [ -f "$state_file" ] || (pacman -Q iwd &>/dev/null); then
+        if confirm "IWD detectado. Desinstalar?"; then
+            echo "Desinstalando IWD..."
+            
+            if pacman -Qq iwd &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_iwd || true
+            fi
+            
+            sudo rm -f /etc/NetworkManager/conf.d/iwd.conf 2>/dev/null || true
+            sudo systemctl restart NetworkManager 2>/dev/null || true
+            sudo systemctl enable --now wpa_supplicant 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "IWD desinstalado."
+        fi
+    else
+        if confirm "Instalar IWD (iNet Wireless Daemon)?"; then
+            echo "Instalando IWD..."
+            
+            sudo pacman -S --noconfirm $pkg_iwd
+            
+            echo "[device]
+wifi.backend=iwd" | sudo tee /etc/NetworkManager/conf.d/iwd.conf > /dev/null
+            
+            sudo systemctl stop NetworkManager 2>/dev/null || true
+            sleep 1
+            sudo systemctl restart NetworkManager 2>/dev/null || true
+            sudo systemctl enable --now iwd 2>/dev/null || true
+            sudo systemctl disable wpa_supplicant 2>/dev/null || true
+            
+            touch "$state_file"
+            echo "IWD instalado. Reinicie para aplicar."
+        fi
+    fi
+}
+
+yay() {
+    local state_file="$STATE_DIR/yay"
+    local pkg_yay="yay"
+    
+    if [ -f "$state_file" ] || (pacman -Q yay &>/dev/null); then
+        if confirm "Yay detectado. Desinstalar?"; then
+            echo "Desinstalando Yay..."
+            
+            if pacman -Qq yay &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_yay || true
+            fi
+            
+            cleanup_files "$state_file" "/tmp/yay"
+            echo "Yay desinstalado."
+        fi
+    else
+        if confirm "Instalar Yay (AUR helper)?"; then
+            echo "Instalando Yay..."
+            
+            sudo pacman -S --noconfirm base-devel yay
+            
+            touch "$state_file"
+            echo "Yay instalado."
         fi
     fi
 }
@@ -214,7 +1517,7 @@ fish_basic() {
             echo "set fish_greeting" > ~/.config/fish/config.fish
             
             touch "$state_file"
-            echo "Fish básico instalado. Mensagem de boas-vindas removida."
+            echo "Fish básico instalado."
         fi
     fi
 }
@@ -246,12 +1549,10 @@ fisher() {
             mkdir -p ~/.config/fish
             echo "set fish_greeting" > ~/.config/fish/config.fish
             
-            if command -v fish >/dev/null 2>&1; then
-                fish -c "fisher install jorgebucaran/fisher" 2>/dev/null || true
-            fi
+            fish -c "fisher install jorgebucaran/fisher" 2>/dev/null || true
             
             touch "$state_file"
-            echo "Fisher instalado. Mensagem de boas-vindas removida."
+            echo "Fisher instalado."
         fi
     fi
 }
@@ -349,38 +1650,12 @@ gamescope() {
             
             sudo pacman -S --noconfirm $pkg_gamescope
             
-            if command -v flatpak >/dev/null 2>&1; then
+            if ensure_flatpak; then
                 flatpak install --user --noninteractive flathub org.freedesktop.Platform.VulkanLayer.gamescope 2>/dev/null || true
             fi
             
             touch "$state_file"
             echo "Gamescope instalado."
-        fi
-    fi
-}
-
-thumbnailer() {
-    local state_file="$STATE_DIR/thumbnailer"
-    local pkg_thumbnailer="ffmpegthumbnailer"
-    
-    if [ -f "$state_file" ] || (pacman -Q ffmpegthumbnailer &>/dev/null); then
-        if confirm "Thumbnailer detectado. Desinstalar?"; then
-            echo "Desinstalando Thumbnailer..."
-            
-            if pacman -Qq ffmpegthumbnailer &>/dev/null; then
-                sudo pacman -Rsnu --noconfirm $pkg_thumbnailer || true
-            fi
-            
-            cleanup_files "$state_file"
-            echo "Thumbnailer desinstalado."
-        fi
-    else
-        if confirm "Instalar Thumbnailer?"; then
-            echo "Instalando Thumbnailer..."
-            
-            sudo pacman -S --noconfirm $pkg_thumbnailer
-            touch "$state_file"
-            echo "Thumbnailer instalado."
         fi
     fi
 }
@@ -431,7 +1706,7 @@ starship() {
             fi
             
             touch "$state_file"
-            echo "Starship instalado com suporte para bash, zsh e fish."
+            echo "Starship instalado."
         fi
     fi
 }
@@ -538,14 +1813,13 @@ ananicy_cpp() {
             sudo pacman -S --noconfirm $pkg_ananicy
             sudo systemctl enable --now ananicy-cpp.service
             touch "$state_file"
-            echo "Ananicy-cpp instalado. Reinício recomendado."
+            echo "Ananicy-cpp instalado."
         fi
     fi
 }
 
 hwaccel_flatpak() {
     local state_file="$STATE_DIR/hwaccel_flatpak"
-    local pkg_flatpak="flatpak"
     
     if [ -f "$state_file" ] || (flatpak list | grep -q freedesktop.Platform.VAAPI 2>/dev/null); then
         if confirm "HW Acceleration Flatpak detectado. Desinstalar?"; then
@@ -561,15 +1835,12 @@ hwaccel_flatpak() {
         if confirm "Instalar HW Acceleration Flatpak?"; then
             echo "Instalando HW Acceleration Flatpak..."
             
-            if ! pacman -Q flatpak &>/dev/null; then
-                sudo pacman -S --noconfirm $pkg_flatpak
-                flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+            if ensure_flatpak; then
+                flatpak install --user -y flathub org.freedesktop.Platform.VAAPI.Intel 2>/dev/null || true
+                flatpak override --user --device=all --env=GDK_SCALE=1 --env=GDK_DPI_SCALE=1 2>/dev/null || true
+                touch "$state_file"
+                echo "HW Acceleration Flatpak instalado."
             fi
-            
-            flatpak install --user -y flathub org.freedesktop.Platform.VAAPI.Intel 2>/dev/null || true
-            flatpak override --user --device=all --env=GDK_SCALE=1 --env=GDK_DPI_SCALE=1 2>/dev/null || true
-            touch "$state_file"
-            echo "HW Acceleration Flatpak instalado."
         fi
     fi
 }
@@ -725,32 +1996,9 @@ nvim_lazyman() {
             
             sudo pacman -S --noconfirm $pkg_neovim
             
-            git clone --depth=1 https://github.com/doctorfree/nvim-lazyman "$lazyman_dir"
-            
-            echo "Selecione a configuração:"
-            echo "1) Abstract"
-            echo "2) AstroNvimPlus"
-            echo "3) Basic IDE"
-            echo "4) Ecovim"
-            echo "5) LazyVim"
-            echo "6) LunarVim"
-            echo "7) MagicVim"
-            echo "8) NvChad"
-            echo "9) SpaceVim"
-            read -p "Opção (1-9): " config_opcao
-            
-            case $config_opcao in
-                1) "$lazyman_dir"/lazyman.sh -g -z ;;
-                2) "$lazyman_dir"/lazyman.sh -a -z ;;
-                3) "$lazyman_dir"/lazyman.sh -j -z ;;
-                4) "$lazyman_dir"/lazyman.sh -e -z ;;
-                5) "$lazyman_dir"/lazyman.sh -l -z ;;
-                6) "$lazyman_dir"/lazyman.sh -v -z ;;
-                7) "$lazyman_dir"/lazyman.sh -m -z ;;
-                8) "$lazyman_dir"/lazyman.sh -c -z ;;
-                9) "$lazyman_dir"/lazyman.sh -s -z ;;
-                *) echo "Opção inválida" ;;
-            esac
+            cleanup_files "$lazyman_dir"
+            git clone https://github.com/doctorfree/nvim-lazyman "$lazyman_dir"
+            "$lazyman_dir"/lazyman.sh
             
             touch "$state_file"
             echo "Lazyman instalado."
@@ -773,8 +2021,10 @@ nvim_lazyvim() {
         if confirm "Instalar LazyVim?"; then
             echo "Instalando LazyVim..."
             
+            cleanup_files "$nvim_dir"
             git clone https://github.com/LazyVim/starter "$nvim_dir"
             rm -rf "$nvim_dir/.git"
+            
             touch "$state_file"
             echo "LazyVim instalado."
         fi
@@ -940,11 +2190,9 @@ apparmor() {
             sudo rm -f /etc/default/grub.d/99-apparmor.cfg 2>/dev/null || true
             sudo rm -f /etc/kernel/cmdline.d/99-apparmor.conf 2>/dev/null || true
             
-            if pacman -Qq grub &>/dev/null; then
-                sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
-            else
-                sudo bootctl update 2>/dev/null || true
-            fi
+            sudo mkdir -p /boot/grub 2>/dev/null || true
+            sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
+            sudo bootctl update 2>/dev/null || true
             
             if pacman -Qq apparmor &>/dev/null; then
                 sudo pacman -Rsnu --noconfirm $pkg_apparmor || true
@@ -962,6 +2210,7 @@ apparmor() {
             if pacman -Qq grub &>/dev/null; then
                 sudo mkdir -p /etc/default/grub.d
                 echo 'GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} apparmor=1 security=apparmor"' | sudo tee /etc/default/grub.d/99-apparmor.cfg
+                sudo mkdir -p /boot/grub 2>/dev/null || true
                 sudo grub-mkconfig -o /boot/grub/grub.cfg
             else
                 sudo mkdir -p /etc/kernel/cmdline.d
@@ -1148,13 +2397,11 @@ shader_booster() {
             echo -e "\n# Shader Booster patches" >> "$dest_file"
             
             if [ -n "$has_nvidia" ]; then
-                echo "Aplicando patch para NVIDIA..."
                 curl -s https://raw.githubusercontent.com/psygreg/shader-booster/main/patch-nvidia >> "$dest_file"
                 patch_applied=1
             fi
             
             if [ -n "$has_mesa" ]; then
-                echo "Aplicando patch para Mesa..."
                 curl -s https://raw.githubusercontent.com/psygreg/shader-booster/main/patch-mesa >> "$dest_file"
                 patch_applied=1
             fi
@@ -1177,59 +2424,129 @@ main() {
         clear
         echo "=== Scripts para Arch Linux ==="
         echo "1) Ambientes Desktop"
-        echo "2) Ananicy-cpp"
-        echo "3) AppArmor"
-        echo "4) AppImage FUSE"
-        echo "5) Chaotic AUR"
-        echo "6) CPU Ondemand"
-        echo "7) DNSMasq"
-        echo "8) EarlyOOM"
-        echo "9) Fish Shell"
-        echo "10) Flathub"
-        echo "11) Gamemode"
-        echo "12) Gamescope"
-        echo "13) HW Acceleration Flatpak"
-        echo "14) LucidGlyph"
-        echo "15) NeoVim"
-        echo "16) Nix Packages"
-        echo "17) Oh My Bash"
-        echo "18) Shader Booster"
-        echo "19) Starship"
-        echo "20) Swapfile"
-        echo "21) Thumbnailer"
-        echo "22) UFW"
-        echo "23) Sair"
+        echo "2) Android Studio"
+        echo "3) Ananicy-cpp"
+        echo "4) AppArmor"
+        echo "5) AppImage FUSE"
+        echo "6) Arch Secure Boot"
+        echo "7) Btrfs Assistant"
+        echo "8) CachyOS Configs"
+        echo "9) Chaotic AUR"
+        echo "10) CPU Ondemand"
+        echo "11) Distrobox Command Handler"
+        echo "12) DNSMasq"
+        echo "13) Docker"
+        echo "14) DsplitM"
+        echo "15) EarlyOOM"
+        echo "16) Fish Shell"
+        echo "17) Flathub"
+        echo "18) Gamemode"
+        echo "19) Gamescope"
+        echo "20) Godot Engine"
+        echo "21) GRUB Btrfs"
+        echo "22) HTTPie"
+        echo "23) HW Acceleration Flatpak"
+        echo "24) Insomnia"
+        echo "25) IWD"
+        echo "26) Java OpenJDK"
+        echo "27) JetBrains Toolbox"
+        echo "28) LucidGlyph"
+        echo "29) Maven"
+        echo "30) Microsoft Core Fonts"
+        echo "31) MinFreeFix"
+        echo "32) Mise"
+        echo "33) NeoVim"
+        echo "34) Nix Packages"
+        echo "35) NVM"
+        echo "36) Oh My Bash"
+        echo "37) Oh My Zsh"
+        echo "38) PNPM"
+        echo "39) Portainer"
+        echo "40) Postman"
+        echo "41) Powersave"
+        echo "42) Preload"
+        echo "43) PyEnv"
+        echo "44) SDKMAN"
+        echo "45) Shader Booster"
+        echo "46) Starship"
+        echo "47) Sublime Text"
+        echo "48) Swapfile"
+        echo "49) Tailscale"
+        echo "50) Thumbnailer"
+        echo "51) UFW"
+        echo "52) Visual Studio Code"
+        echo "53) VSCodium"
+        echo "54) WinBoat"
+        echo "55) Yay"
+        echo "56) Zed"
+        echo "57) ZeroTier"
+        echo "58) Sair"
         echo
         read -p "Selecione uma opção: " opcao
         
         case $opcao in
             1) clear; de ;;
-            2) clear; ananicy_cpp ;;
-            3) clear; apparmor ;;
-            4) clear; appimage_fuse ;;
-            5) clear; chaotic_aur ;;
-            6) clear; cpu_ondemand ;;
-            7) clear; dnsmasq ;;
-            8) clear; earlyoom ;;
-            9) clear; fish_menu ;;
-            10) clear; flathub ;;
-            11) clear; gamemode ;;
-            12) clear; gamescope ;;
-            13) clear; hwaccel_flatpak ;;
-            14) clear; lucidglyph ;;
-            15) clear; nvim ;;
-            16) clear; nix_packages ;;
-            17) clear; oh_my_bash ;;
-            18) clear; shader_booster ;;
-            19) clear; starship ;;
-            20) clear; swapfile ;;
-            21) clear; thumbnailer ;;
-            22) clear; ufw ;;
-            23) exit 0 ;;
+            2) clear; android_studio ;;
+            3) clear; ananicy_cpp ;;
+            4) clear; apparmor ;;
+            5) clear; appimage_fuse ;;
+            6) clear; archsb ;;
+            7) clear; btrfs_assistant ;;
+            8) clear; cachyconfs ;;
+            9) clear; chaotic_aur ;;
+            10) clear; cpu_ondemand ;;
+            11) clear; distrobox_handler ;;
+            12) clear; dnsmasq ;;
+            13) clear; docker ;;
+            14) clear; dsplitm ;;
+            15) clear; earlyoom ;;
+            16) clear; fish_menu ;;
+            17) clear; flathub ;;
+            18) clear; gamemode ;;
+            19) clear; gamescope ;;
+            20) clear; godot ;;
+            21) clear; grub_btrfs ;;
+            22) clear; httpie ;;
+            23) clear; hwaccel_flatpak ;;
+            24) clear; insomnia ;;
+            25) clear; iwd ;;
+            26) clear; java_openjdk ;;
+            27) clear; jetbrains_toolbox ;;
+            28) clear; lucidglyph ;;
+            29) clear; maven ;;
+            30) clear; mscorefonts ;;
+            31) clear; minfreefix ;;
+            32) clear; mise ;;
+            33) clear; nvim ;;
+            34) clear; nix_packages ;;
+            35) clear; nvm ;;
+            36) clear; oh_my_bash ;;
+            37) clear; oh_my_zsh ;;
+            38) clear; pnpm ;;
+            39) clear; portainer ;;
+            40) clear; postman ;;
+            41) clear; psaver ;;
+            42) clear; preload ;;
+            43) clear; pyenv ;;
+            44) clear; sdkman ;;
+            45) clear; shader_booster ;;
+            46) clear; starship ;;
+            47) clear; sublime_text ;;
+            48) clear; swapfile ;;
+            49) clear; tailscale ;;
+            50) clear; thumbnailer ;;
+            51) clear; ufw ;;
+            52) clear; visual_studio_code ;;
+            53) clear; vscodium ;;
+            54) clear; winboat ;;
+            55) clear; yay ;;
+            56) clear; zed ;;
+            57) clear; zerotier ;;
+            58) exit 0 ;;
             *) ;;
         esac
         
-        [ "$opcao" -ge 1 ] && [ "$opcao" -le 22 ] && read -p "Pressione Enter para continuar..."
+        [ "$opcao" -ge 1 ] && [ "$opcao" -le 57 ] && read -p "Pressione Enter para continuar..."
     done
 }
 
